@@ -7,10 +7,6 @@ eu_lat <- 55
 eu_lon <- 10
 eu_zoom <- 3
 
-# Reading polygons from json is very slow. Save as RDS once
-#world_countries_shapes <- rgdal::readOGR(dsn = "data/countries.geo.json")
-#saveRDS(world_countries_shapes, file = "data/countries.rds")
-
 # read map data from RDS
 world_countries_shapes = readRDS(file = "data/countries.rds")
 
@@ -22,14 +18,19 @@ max_cases = max(monkeypox_df$ConfCases)
 avail_countries = unique(monkeypox_df$CountryExp)
 
 # avaliable dates
-avail_dates = unique(monkeypox_df$DateRep)
+avail_dates = sort(unique(monkeypox_df$DateRep), decreasing=FALSE)
 
 # TODO: merge data
-merged_df <- left_join(
-  x = world_countries_shapes@data,
-  y = monkeypox_df[monkeypox_df$DateRep == "2022-07-13",],
-  by = c('name' = "CountryExp"),
-)
+for (date_temp in avail_dates) {
+  #date_temp = "2022-07-13"
+  conf_cases_temp <- left_join(
+    x = world_countries_shapes@data,
+    y = monkeypox_df[monkeypox_df$DateRep == date_temp,],
+    by = c('name' = "CountryExp"),
+  )$ConfCases
+  index_cases_date = paste("ConfCases", date_temp, sep='_')
+  world_countries_shapes@data[index_cases_date] <- conf_cases_temp
+}
 
 # shiny user interface
 ui <- fluidPage(
@@ -71,7 +72,7 @@ server <- function(input, output, session) {
       leaflet::setView(lat = eu_lat, lng = eu_lon, zoom = eu_zoom) %>%
       leaflet::addPolygons(
         # TODO: make color depend on number of cases
-        color = palette(merged_df$ConfCases),
+        color = palette(world_countries_shapes@data[,"ConfCases_2022-07-10"]),
         weight = 1,
         smoothFactor = 0.5,
         opacity = 1.0,
