@@ -1,5 +1,6 @@
 library(leaflet)
 library(shiny)
+library(dplyr)
 
 # initial map position
 eu_lat <- 55
@@ -15,9 +16,20 @@ world_countries_shapes = readRDS(file = "data/countries.rds")
 
 # read monkeypox data
 monkeypox_df <- read.csv("data/monkeypox-eu.csv")
+max_cases = max(monkeypox_df$ConfCases)
 
-# list available of countries
+# available countries
 avail_countries = unique(monkeypox_df$CountryExp)
+
+# avaliable dates
+avail_dates = unique(monkeypox_df$DateRep)
+
+# TODO: merge data
+merged_df <- left_join(
+  x = world_countries_shapes@data,
+  y = monkeypox_df[monkeypox_df$DateRep == "2022-07-13",],
+  by = c('name' = "CountryExp"),
+)
 
 # shiny user interface
 ui <- fluidPage(
@@ -43,6 +55,13 @@ ui <- fluidPage(
   )
 )
 
+# palette function
+palette = colorNumeric(
+  palette = 'Reds',
+  domain = c(0, max_cases), 
+  na.color = '#a0a0a0',
+)
+
 # shiny server
 server <- function(input, output, session) {
   # change main panel map
@@ -52,7 +71,7 @@ server <- function(input, output, session) {
       leaflet::setView(lat = eu_lat, lng = eu_lon, zoom = eu_zoom) %>%
       leaflet::addPolygons(
         # TODO: make color depend on number of cases
-        color = "#444444",
+        color = palette(merged_df$ConfCases),
         weight = 1,
         smoothFactor = 0.5,
         opacity = 1.0,
