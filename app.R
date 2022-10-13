@@ -13,11 +13,11 @@ eu_zoom <- 3
 # read map data from RDS
 world_countries_shapes = readRDS(file = "data/countries.rds")
 
-# read smallpox data
-smallpox_df <- read.csv("data/monkeypox-eu.csv")
+# read monkeypox data
+monkeypox_df <- read.csv("data/monkeypox-eu.csv")
 
 # list available of countries
-avail_countries = unique(smallpox_df$CountryExp)
+avail_countries = unique(monkeypox_df$CountryExp)
 
 # shiny user interface
 ui <- fluidPage(
