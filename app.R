@@ -8,8 +8,9 @@ eu_lon = 10
 eu_zoom = 3
 
 # load preprocessed data
-max_cases = readRDS(file = "data/max_cases.rds")
-avail_dates = readRDS(file = "data/avail_dates.rds")
+max_cases_per_week = readRDS(file = "data/max_cases_per_week.rds")
+avail_weeks = readRDS(file = "data/avail_weeks.rds")
+avail_weeks_fridays = readRDS(file = "data/avail_weeks_fridays.rds")
 data_countries_shapes = readRDS(file = "data/data_countries_shapes.rds")  # contains monkeypox data
 nodata_countries_shapes = readRDS(file = "data/nodata_countries_shapes.rds")
 
@@ -24,10 +25,11 @@ ui = shiny::fluidPage(
       shiny::sliderInput(
         inputId = "date",
         label = "Date (year 2022)",
-        min = as.Date(min(avail_dates)),
-        max = as.Date(max(avail_dates)),
+        min = min(avail_weeks_fridays),
+        max = max(avail_weeks_fridays),
         value = as.Date("2022-04-22"),
-        timeFormat = "%m-%d"
+        timeFormat = "%d %b",
+        step = 7,
       )
     ),
     # map is main element
@@ -37,20 +39,35 @@ ui = shiny::fluidPage(
   )
 )
 
-# palette function
-cases_palette = colorNumeric(
-  palette = 'Reds',
-  domain = c(0, max_cases), 
+# palette functions
+#palette_colors = 'Reds'
+#palette_colors = c('#e8e8e8', '#c0c040', '#d02020', '#c04080')
+palette_colors = 'Reds'
+cases_palette = leaflet::colorNumeric(
+  palette = palette_colors,
+  domain = c(0, max_cases_per_week), 
   na.color = '#a0a0a0',
+)
+cases_palette_rev = leaflet::colorNumeric(
+  palette = palette_colors,
+  domain = c(0, max_cases_per_week), 
+  na.color = '#a0a0a0',
+  reverse = TRUE,
 )
 
 # shiny server
 server = function(input, output, session) {
   
-  # function for the color to be called
+  # reactive function for the color
   color = shiny::reactive({
-    index_cases_date = as.character(input$date)
-    return(cases_palette(data_countries_shapes@data[, index_cases_date]))
+    input_week = strftime(input$date, "%Y-%U")
+    if (input_week %in% names(data_countries_shapes)) {
+      case_numbers = data_countries_shapes@data[, input_week]
+    } else {
+      # this should never happen, but anyway
+      case_numbers = rep(NaN, length(data_countries_shapes))
+    }
+    return(cases_palette(case_numbers))
   })
   
   # change main panel map
@@ -75,10 +92,13 @@ server = function(input, output, session) {
         stroke = FALSE,
       ) %>%
     
+      # add legend
       leaflet::addLegend(
         position = "bottomright",
-        pal = cases_palette,
-        values = c(0, 200),
+        pal = cases_palette_rev,
+        values = c(0, max_cases_per_week),
+        title = 'cases per week',
+        labFormat = leaflet::labelFormat(transform = function(x) sort(x, decreasing = TRUE)),
       )
   })
   
@@ -97,7 +117,7 @@ server = function(input, output, session) {
         smoothFactor = 0.5,
         opacity = 1.0,
         fillOpacity = 0.5,
-        highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
+        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
         stroke = TRUE,
       )
   })
