@@ -3,38 +3,17 @@ library(shiny)
 library(dplyr)
 
 # initial map position
-eu_lat <- 55
-eu_lon <- 10
-eu_zoom <- 3
+eu_lat = 55
+eu_lon = 10
+eu_zoom = 3
 
-# read map data from RDS
-world_countries_shapes = readRDS(file = "data/countries.rds")
-
-# read monkeypox data
-monkeypox_df <- read.csv("data/monkeypox-eu.csv")
-max_cases = max(monkeypox_df$ConfCases)
-
-# available countries
-avail_countries = unique(monkeypox_df$CountryExp)
-
-# avaliable dates
-avail_dates = sort(unique(monkeypox_df$DateRep), decreasing=FALSE)
-
-# load data for all dates
-for (date_temp in avail_dates) {
-  #date_temp = "2022-07-13"
-  conf_cases_temp <- left_join(
-    x = world_countries_shapes@data,
-    y = monkeypox_df[monkeypox_df$DateRep == date_temp,],
-    by = c('name' = "CountryExp"),
-  )$ConfCases
-  index_cases_date = as.character(date_temp)
-  world_countries_shapes@data[index_cases_date] <- conf_cases_temp
-  rm(conf_cases_temp)
-}
+# load preprocessed data
+avail_dates = readRDS(file = "data/avail_dates.rds")
+data_countries_shapes = readRDS(file = "data/data_countries_shapes.rds")  # contains monkeypox data
+nodata_countries_shapes = readRDS(file = "data/nodata_countries_shapes.rds")
 
 # shiny user interface
-ui <- fluidPage(
+ui = fluidPage(
   # title
   titlePanel("Monkeypox Cases"),
   # sidebar with controls
@@ -65,27 +44,32 @@ palette = colorNumeric(
 )
 
 # shiny server
-server <- function(input, output, session) {
+server = function(input, output, session) {
   
   # function for the color to be called
-  color <- eventReactive(input$date, {
+  color = eventReactive(input$date, {
     index_cases_date = as.character(input$date)
-    return(palette(world_countries_shapes@data[, index_cases_date]))
+    return(palette(data_countries_shapes@data[, index_cases_date]))
   }, ignoreNULL = FALSE)
   
   # change main panel map
-  output$map <- renderLeaflet({
+  output$map = renderLeaflet({
     # leaflet map
-    leaflet(data = world_countries_shapes) %>%
+    leaflet(data = data_countries_shapes) %>%
       
-      leaflet::setView(lat = eu_lat, lng = eu_lon, zoom = eu_zoom) %>%
+      leaflet::setView(
+        lat = eu_lat,
+        lng = eu_lon,
+        zoom = eu_zoom,
+      ) %>%
       
       # countries without data
       leaflet::addPolygons(
+        data = nodata_countries_shapes,
         color = "#a0a0a0",
         weight = 1,
         smoothFactor = 0.5,
-        opacity = ifelse(world_countries_shapes$name %in% avail_countries, 0.0, 1.0),
+        opacity = 1.0,
         fillOpacity = 0.5,
         stroke = FALSE,
       ) %>%
@@ -98,7 +82,7 @@ server <- function(input, output, session) {
         opacity = 1.0,
         fillOpacity = 0.5,
         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
-        stroke = world_countries_shapes$name %in% avail_countries,
+        stroke = TRUE,
       )
   })
 }
