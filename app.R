@@ -24,13 +24,14 @@ ui = shiny::fluidPage(
     shiny::sidebarPanel(
       shiny::sliderInput(
         inputId = "date",
-        label = "Date (year 2022)",
+        label = "Select a date",
         min = min(avail_weeks_fridays),
         max = max(avail_weeks_fridays),
         value = as.Date("2022-04-22"),
-        timeFormat = "%d %b",
+        timeFormat = "%d %b %Y",
         step = 7,
-      )
+      ),
+      shiny::p(shiny::textOutput("time_description"))
     ),
     # map is main element
     shiny::mainPanel(
@@ -86,18 +87,18 @@ server = function(input, output, session) {
         data = nodata_countries_shapes,
         color = "#a0a0a0",
         weight = 1,
-        smoothFactor = 0.5,
+        smoothFactor = 0.6,
         opacity = 1.0,
         fillOpacity = 0.5,
         stroke = FALSE,
       ) %>%
-    
+      
       # add legend
       leaflet::addLegend(
         position = "bottomright",
         pal = cases_palette_rev,
         values = c(0, max_cases_per_week),
-        title = 'cases per week',
+        title = 'Cases per week',
         labFormat = leaflet::labelFormat(transform = function(x) sort(x, decreasing = TRUE)),
       )
   })
@@ -121,6 +122,17 @@ server = function(input, output, session) {
         stroke = TRUE,
       )
   })
+  
+  # generate time info below slider
+  output$time_description = renderText(
+    expr = {
+      from = input$date + as.difftime("07", format = "%d")
+      to = input$date
+      week = format(input$date, "%U")
+      time_info = sprintf("Showing the cases reported from %s to %s (week number %s)", from, to, week)
+      return(time_info)
+    }
+  )
 }
 
 # show shiny app
