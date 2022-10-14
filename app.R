@@ -8,19 +8,20 @@ eu_lon = 10
 eu_zoom = 3
 
 # load preprocessed data
+max_cases = readRDS(file = "data/max_cases.rds")
 avail_dates = readRDS(file = "data/avail_dates.rds")
 data_countries_shapes = readRDS(file = "data/data_countries_shapes.rds")  # contains monkeypox data
 nodata_countries_shapes = readRDS(file = "data/nodata_countries_shapes.rds")
 
 # shiny user interface
-ui = fluidPage(
+ui = shiny::fluidPage(
   # title
-  titlePanel("Monkeypox Cases"),
+  shiny::titlePanel("Monkeypox Cases"),
   # sidebar with controls
   # TODO: add color legend
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput(
+  shiny::sidebarLayout(
+    shiny::sidebarPanel(
+      shiny::sliderInput(
         inputId = "date",
         label = "Date (year 2022)",
         min = as.Date(min(avail_dates)),
@@ -30,14 +31,14 @@ ui = fluidPage(
       )
     ),
     # map is main element
-    mainPanel(
-      leafletOutput("map"),
+    shiny::mainPanel(
+      leaflet::leafletOutput("map"),
     )
   )
 )
 
 # palette function
-palette = colorNumeric(
+cases_palette = colorNumeric(
   palette = 'Reds',
   domain = c(0, max_cases), 
   na.color = '#a0a0a0',
@@ -47,15 +48,15 @@ palette = colorNumeric(
 server = function(input, output, session) {
   
   # function for the color to be called
-  color = eventReactive(input$date, {
+  color = shiny::reactive({
     index_cases_date = as.character(input$date)
-    return(palette(data_countries_shapes@data[, index_cases_date]))
-  }, ignoreNULL = FALSE)
+    return(cases_palette(data_countries_shapes@data[, index_cases_date]))
+  })
   
   # change main panel map
-  output$map = renderLeaflet({
+  output$map = leaflet::renderLeaflet({
     # leaflet map
-    leaflet(data = data_countries_shapes) %>%
+    leaflet::leaflet(data = data_countries_shapes) %>%
       
       leaflet::setView(
         lat = eu_lat,
@@ -73,9 +74,24 @@ server = function(input, output, session) {
         fillOpacity = 0.5,
         stroke = FALSE,
       ) %>%
-      
+    
+      leaflet::addLegend(
+        position = "bottomright",
+        pal = cases_palette,
+        values = c(0, 200),
+      )
+  })
+  
+  # fixed layer_ids lead to replacement of polygon
+  layer_ids = as.character(1:length(data_countries_shapes))
+  
+  # dynamic part
+  shiny::observe({
+    proxy = leaflet::leafletProxy("map", data = data_countries_shapes)
+    proxy %>%
+      # add polygons with new color
       leaflet::addPolygons(
-        # TODO, only plot those with data
+        layerId = layer_ids,
         color = color(),
         weight = 1,
         smoothFactor = 0.5,
@@ -88,4 +104,4 @@ server = function(input, output, session) {
 }
 
 # show shiny app
-shinyApp(ui, server)
+shiny::shinyApp(ui, server)

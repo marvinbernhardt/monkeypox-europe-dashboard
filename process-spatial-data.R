@@ -31,6 +31,7 @@ for (date_temp in avail_dates) {
   rm(conf_cases_temp)
 }
 
+saveRDS(max_cases, file = "data/max_cases.rds")
 saveRDS(avail_dates, file = "data/avail_dates.rds")
 saveRDS(data_countries_shapes, file = "data/data_countries_shapes.rds")
 saveRDS(nodata_countries_shapes, file = "data/nodata_countries_shapes.rds")
