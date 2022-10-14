@@ -35,7 +35,10 @@ ui = shiny::fluidPage(
     ),
     # map is main element
     shiny::mainPanel(
-      leaflet::leafletOutput("map"),
+      leaflet::leafletOutput(
+        outputId = "map",
+        height = 600,
+      ),
     )
   )
 )
