@@ -31,7 +31,15 @@ ui = shiny::fluidPage(
         timeFormat = "%d %b %Y",
         step = 7,
       ),
-      shiny::p(shiny::textOutput("time_description"))
+      shiny::p(shiny::textOutput("time_description")),
+      shiny::p(
+        "Generated with ",
+        shiny::a(
+          "publicly available data",
+          href = "https://www.ecdc.europa.eu/en/publications-data/data-monkeypox-cases-eueea"
+        ),
+        " from the ECDC.",
+      )
     ),
     # map is main element
     shiny::mainPanel(
